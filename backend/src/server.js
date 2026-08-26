@@ -51,6 +51,7 @@ const cdnRoutes = require("./routes/cdn");
 const rankingRoutes = require("./routes/ranking");
 const savedSearchesRoutes = require("./routes/savedSearches");
 const reputationRoutes = require("./routes/reputation");
+const retainerRoutes = require("./routes/retainers");
 
 const pool = require("./db/pool");
 const { migrate } = require("./db/migrate");
@@ -344,6 +345,7 @@ app.use("/api/cdn", cdnRoutes);
 app.use("/api/ranking", rankingRoutes);
 app.use("/api/saved-searches", savedSearchesRoutes);
 app.use("/api/reputation", reputationRoutes);
+app.use("/api/retainers", retainerRoutes);
 
 app.use((err, req, res, next) => {
   void next;
@@ -504,6 +506,9 @@ async function bootstrap() {
 
     // Start weekly digest scheduler - fires every Monday at 09:00 UTC
     startWeeklyDigestScheduler();
+
+    // Start retainer billing scheduler - releases due periods every 15 minutes
+    startRetainerBillingScheduler();
 
     server.listen(PORT, () => {
       serviceLogger.info(
@@ -702,6 +707,33 @@ function startWeeklyDigestScheduler() {
     // Then run every 7 days from that point onward
     setInterval(runDigest, 7 * 24 * 60 * 60 * 1000).unref();
   }, delay).unref();
+}
+
+/**
+ * Recurring retainers (Issue #321): release due billing periods, finalize
+ * cancellations whose notice has elapsed, and send upcoming-charge /
+ * underfunding-warning notifications. Same shape as the notification
+ * poller above — a plain setInterval, no new job-queue dependency — see
+ * docs/ADR-012-recurring-retainers.md for why a single poller is
+ * sufficient at this codebase's current scale.
+ */
+function startRetainerBillingScheduler() {
+  const retainerService = require("./services/retainerService");
+  const retainerLogger = createServiceLogger("retainer-billing-scheduler");
+  const INTERVAL_MS = 15 * 60 * 1000;
+
+  async function runCycle() {
+    try {
+      const results = await retainerService.runBillingCycle();
+      retainerLogger.info(results, "Retainer billing cycle run complete");
+    } catch (err) {
+      logError(retainerLogger, err, { operation: "retainer_billing_cycle" });
+    }
+  }
+
+  // Run once on startup so a restart doesn't wait a full interval to catch up
+  runCycle();
+  setInterval(runCycle, INTERVAL_MS).unref();
 }
 
 // Only boot the full service when this file is the process entry point
