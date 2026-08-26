@@ -11,7 +11,7 @@ the client reviews by hand.
 
 A large share of real freelance income is retainer work: a fixed monthly
 fee for ongoing availability, or a recurring, capped hourly arrangement
-("up to 20 hours/month"). Nothing in the schema represents an *ongoing*
+("up to 20 hours/month"). Nothing in the schema represents an _ongoing_
 commercial relationship — there is no construct that bills itself every
 period without a human re-triggering it, and no concept of a "period" at
 all.
@@ -29,7 +29,7 @@ code path — a retainer is not a job, and does not require one.
 - **On-chain Soroban settlement.** Exactly like the existing
   `time_invoices` flow (`contract_tx_hash` is recorded, not produced, by
   the backend — see `timeTrackingService.reviewInvoice`), this PR records
-  *decisions* (release, top-up, cancellation) and their tx hashes; it does
+  _decisions_ (release, top-up, cancellation) and their tx hashes; it does
   not submit Soroban transactions itself. Wiring a `retainer` contract
   that custodies funds on-chain is a natural follow-up once this data
   model is stable — see "Future work" below.
@@ -48,7 +48,7 @@ API/data layer.
 
 ### Data model
 
-Seven new tables (migration `V19__recurring_retainers`), plus three
+Seven new tables (migration `V20__recurring_retainers`, after a V19 that backfills two missing pre-existing tables — see below), plus three
 nullable columns added to the existing `time_entries` table so retainer
 work reuses the same logging path as job work.
 
@@ -71,7 +71,7 @@ retainer_proposals ──accepted──▶ retainers ──1:N──▶ retainer
 
 - **`retainers`** — the live agreement. Carries the current terms
   (a price/terms change is applied only after both an amendment and its
-  acceptance — see below, so the *live* row always reflects the
+  acceptance — see below, so the _live_ row always reflects the
   last-agreed terms, never a pending proposal), a `balance_xlm` funded
   pool the client tops up via `retainer_funding_events`, and lifecycle
   state (`active | paused | pending_cancellation | cancelled`).
@@ -80,7 +80,7 @@ retainer_proposals ──accepted──▶ retainers ──1:N──▶ retainer
   `logged_hours` / `approved_hours` / `disputed_hours` as time entries
   come in, and is the unit the scheduler releases against. Status
   (`open | released | underfunded | held_paused | settled_prorata |
-  cancelled`) is what makes underfunding and pausing *visible* rather
+cancelled`) is what makes underfunding and pausing _visible_ rather
   than a silent failure to release.
 
 - **`retainer_amendments`** — every proposed change to a live retainer
@@ -106,7 +106,7 @@ retainer_proposals ──accepted──▶ retainers ──1:N──▶ retainer
   (`approval_status`, `approved_by`, `approved_at`, `dispute_reason`,
   `resolved_by`, `resolved_at`) are added, guarded by
   `CHECK (job_id IS NOT NULL OR (retainer_id IS NOT NULL AND
-  retainer_period_id IS NOT NULL))`. Every existing query against
+retainer_period_id IS NOT NULL))`. Every existing query against
   `time_entries` filters by `job_id` explicitly, so this is additive:
   retainer-linked rows are invisible to job-billing code and vice versa.
   This is the "connect the existing time tracking to retainer billing"
@@ -180,10 +180,10 @@ which re-decides it as approved or rejected.
 
 Critically, `releasePeriod` sums only `approval_status = 'approved'`
 hours into `approved_hours` — `pending` and `disputed` entries are
-simply excluded from *this* release. There is no retainer-wide or
+simply excluded from _this_ release. There is no retainer-wide or
 period-wide lock: a dispute over one entry never prevents the rest of
 the period's approved hours from billing and releasing on schedule. Once
-a disputed entry resolves, it is picked up by the *next* statement
+a disputed entry resolves, it is picked up by the _next_ statement
 computation (a period's statement is a live read over its entries, not a
 frozen snapshot, until the period itself is released).
 
@@ -199,7 +199,7 @@ All of these reuse `retainer_amendments`:
   it out.
 - **Price / terms change**: proposed as `price_change` / `terms_change`
   with the new terms in `payload`; on acceptance, the new terms are
-  applied to `retainers` and take effect for the *next* period (the
+  applied to `retainers` and take effect for the _next_ period (the
   currently-open period keeps its already-committed terms — you cannot
   retroactively change what's already accruing). This is what makes
   re-acceptance explicit rather than silent: there is no code path that
@@ -231,7 +231,7 @@ prorated_due = fixed         ? amount_xlm * fraction
 ```
 
 (For the capped model, hours already worked are hours already worked —
-pro-ration by *time elapsed* would either overpay or underpay a
+pro-ration by _time elapsed_ would either overpay or underpay a
 freelancer who front- or back-loaded their hours, so the capped model
 settles on actual approved hours rather than a time fraction. This
 mirrors how the period bills normally; cancellation just closes the
@@ -244,7 +244,7 @@ underfunding degrade path as a normal release) and marked
 ### Commercial surface and forecasting
 
 `GET /api/retainers/forecast/:retainerId` returns the projected charge
-for the *next* release: amount due under the current terms and current
+for the _next_ release: amount due under the current terms and current
 approved-hours-to-date, current funded balance, and whether that balance
 covers it — the same numbers `warnUpcomingUnderfunding` uses internally,
 exposed directly so a UI can show it before the scheduler ever fires.
@@ -288,7 +288,20 @@ exposed directly so a UI can show it before the scheduler ever fires.
 
 ## Migration plan
 
-`V19__recurring_retainers.up.sql` / `.down.sql`, additive-only against
+**`V19__time_entries_backfill`** ships first and is unrelated to
+retainers on its face, but this ADR's `time_entries` alteration
+depends on it: `time_entries` / `time_invoices` (Issue #346) were only
+ever added to `db/schema.sql` — a reference snapshot `migrate.js` does
+not read — and never to an actual migration file, so neither table
+exists in any database built from a clean `migrate()` run, including
+CI's. `V20` was the first migration to touch `time_entries` and
+surfaced this by failing outright (`relation "time_entries" does not
+exist`). `V19` creates both tables verbatim from `schema.sql` (with
+`IF NOT EXISTS`, so it's a no-op against any environment where they
+were somehow created out-of-band) so the actual migration chain
+matches what the application has always assumed was there.
+
+`V20__recurring_retainers.up.sql` / `.down.sql`, additive-only against
 existing tables: `time_entries` gains nullable columns and its `job_id`
 `NOT NULL` is relaxed (with a `CHECK` replacing it), no existing rows are
 touched, no existing query's result set changes. Safe to deploy without a

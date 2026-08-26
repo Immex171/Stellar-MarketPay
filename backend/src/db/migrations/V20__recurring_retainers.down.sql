@@ -1,4 +1,4 @@
--- V19__recurring_retainers.down.sql
+-- V20__recurring_retainers.down.sql
 
 ALTER TABLE time_entries DROP CONSTRAINT IF EXISTS time_entries_billing_construct_chk;
 DROP INDEX IF EXISTS time_entries_retainer_idx;

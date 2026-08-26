@@ -1,4 +1,4 @@
--- V19__recurring_retainers.up.sql
+-- V20__recurring_retainers.up.sql
 -- Recurring retainers and subscription billing (Issue #321).
 -- See docs/ADR-012-recurring-retainers.md for the full design, data
 -- model rationale and migration plan.
