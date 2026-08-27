@@ -52,6 +52,9 @@ const rankingRoutes = require("./routes/ranking");
 const savedSearchesRoutes = require("./routes/savedSearches");
 const reputationRoutes = require("./routes/reputation");
 const retainerRoutes = require("./routes/retainers");
+const fraudRoutes = require("./routes/fraud");
+const complianceRoutes = require("./routes/compliance");
+const sep12Routes = require("./routes/sep12");
 
 const pool = require("./db/pool");
 const { migrate } = require("./db/migrate");
@@ -254,7 +257,16 @@ app.use(requestLoggerMiddleware);
 
 app.use(compression());
 
-app.use(express.json({ limit: "20kb" }));
+app.use(
+  express.json({
+    limit: "20kb",
+    verify: (req, res, buffer) => {
+      void res;
+      req.rawBody = buffer.toString("utf8");
+    },
+  })
+);
+app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(sanitizeMiddleware({ strict: false }));
 
 // Swagger UI
@@ -346,6 +358,9 @@ app.use("/api/ranking", rankingRoutes);
 app.use("/api/saved-searches", savedSearchesRoutes);
 app.use("/api/reputation", reputationRoutes);
 app.use("/api/retainers", retainerRoutes);
+app.use("/api/fraud", fraudRoutes);
+app.use("/api/compliance", complianceRoutes);
+app.use("/api/sep12", sep12Routes);
 
 app.use((err, req, res, next) => {
   void next;
@@ -509,6 +524,10 @@ async function bootstrap() {
 
     // Start retainer billing scheduler - releases due periods every 15 minutes
     startRetainerBillingScheduler();
+
+    // Compliance expiry, continuous screening and Travel Rule retry worker.
+    const { startComplianceScheduler } = require("./services/compliance/worker");
+    startComplianceScheduler();
 
     server.listen(PORT, () => {
       serviceLogger.info(

@@ -201,9 +201,88 @@
             "description": "Creation timestamp"
           }
         }
+      },
+      "Sep12CustomerStatus": {
+        "type": "string",
+        "enum": ["NEEDS_INFO", "PENDING", "ACCEPTED", "REJECTED"]
+      },
+      "Sep12Field": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "Sep12DeletionStatus": {
+        "type": "string",
+        "enum": ["REQUESTED", "RETAINED", "PROVIDER_PENDING", "DELETING", "COMPLETED", "REJECTED"]
+      },
+      "ComplianceDecision": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "policyVersion": {
+            "type": "integer"
+          }
+        }
+      },
+      "ComplianceCase": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "triaged", "investigating", "escalated", "decided", "closed"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "decision": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "TravelRuleStatus": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "receiptHash": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       }
     },
     "responses": {
+      "BadRequest": {
+        "description": "Request validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Invalid request"
+            }
+          }
+        }
+      },
       "Unauthorized": {
         "description": "Unauthorized - missing, invalid, or expired authentication",
         "content": {
@@ -226,6 +305,19 @@
             },
             "example": {
               "error": "Forbidden: Admin access required"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Requested resource was not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Not found"
             }
           }
         }
@@ -3923,6 +4015,70 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/sep12/info": {
+      "get": {
+        "summary": "SEP-12 customer field requirements supported by MarketPay",
+        "tags": ["Compliance"],
+        "responses": {
+          "200": {
+            "description": "SEP-12 field definitions"
+          }
+        }
+      }
+    },
+    "/api/sep12/customer": {
+      "get": {
+        "summary": "Get SEP-12 customer status",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SEP-12 customer status"
+          }
+        }
+      },
+      "put": {
+        "summary": "Submit or update SEP-12 customer information",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Verification pending"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Request deletion of SEP-12 customer information",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion workflow accepted"
           }
         }
       }
@@ -20630,6 +20786,518 @@
         }
       }
     },
+    "/api/compliance/identity/sessions": {
+      "post": {
+        "summary": "Start individual or corporate tiered verification",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Verification session created"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/identity/status": {
+      "get": {
+        "summary": "Get the authenticated subject's verification tier and expiry",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification status"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/limits/check": {
+      "post": {
+        "summary": "Check an amount against the authenticated subject's tier limit",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Explainable limit decision"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/transactions": {
+      "post": {
+        "summary": "Record and evaluate a transfer for monitoring, risk, and Travel Rule controls",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Idempotent replay"
+          },
+          "201": {
+            "description": "Compliance decision recorded"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/identity": {
+      "delete": {
+        "summary": "Request retained-identity deletion",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion workflow accepted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/identity/provider-webhook": {
+      "post": {
+        "summary": "Apply a signature-verified KYC provider decision",
+        "tags": ["Compliance"],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Provider-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider decision accepted idempotently"
+          },
+          "401": {
+            "description": "Invalid provider signature"
+          }
+        }
+      }
+    },
+    "/api/compliance/transactions/{transactionId}": {
+      "get": {
+        "summary": "Get the authenticated originator's compliance decision",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction compliance status"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/compliance/transactions/{transactionId}/self-hosted-wallet": {
+      "post": {
+        "summary": "Record self-hosted wallet-control evidence",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet-control evidence recorded"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/transactions/{transactionId}/travel-rule": {
+      "get": {
+        "summary": "Get Travel Rule exchange state without encrypted payload data",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Travel Rule status and receipt references"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/compliance/audit": {
+      "get": {
+        "summary": "Get and verify the authenticated subject's compliance audit chain",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered audit events and chain validity"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/cases": {
+      "get": {
+        "summary": "List the human compliance review queue",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prioritized case queue"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/cases/{caseId}": {
+      "get": {
+        "summary": "Get alerts and recorded events for one case",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "caseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Case, alerts, and event history"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/cases/{caseId}/actions": {
+      "post": {
+        "summary": "Record an analyst transition or human disposition",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "caseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audited case state"
+          },
+          "409": {
+            "description": "Illegal case transition"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/rules": {
+      "get": {
+        "summary": "List versioned jurisdiction policies",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rule-set versions"
+          }
+        }
+      },
+      "post": {
+        "summary": "Publish a four-eyes-reviewed effective policy without deployment",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "New policy version published"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/rules/effective/{jurisdiction}": {
+      "get": {
+        "summary": "Resolve the effective policy for a jurisdiction and instant",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jurisdiction",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact effective policy version"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/screenings/{subjectId}": {
+      "post": {
+        "summary": "Run and audit an immediate sanctions/PEP screening",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subjectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Screening result and generated cases"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/reports": {
+      "post": {
+        "summary": "Generate an encrypted jurisdiction report after human decision",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Deterministic report draft created"
+          },
+          "409": {
+            "description": "Human case decision required"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/reports/{reportId}/content": {
+      "get": {
+        "summary": "Integrity-check and render a report for analyst review",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SAR JSON or XML content"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/reports/{reportId}/file": {
+      "post": {
+        "summary": "File an approved report and retain its regulator reference",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reportId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filing receipt recorded"
+          }
+        }
+      }
+    },
+    "/api/compliance/admin/worker/run": {
+      "post": {
+        "summary": "Run one bounded expiry, re-screening, and retry cycle",
+        "tags": ["Compliance"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Worker cycle counts"
+          }
+        }
+      }
+    },
     "/api/certificates/{id}": {
       "get": {
         "summary": "Get a skill certificate by ID",
@@ -25611,5 +26279,10 @@
       }
     }
   },
-  "tags": []
+  "tags": [
+    {
+      "name": "Compliance",
+      "description": "Tiered identity, screening, transaction monitoring, Travel Rule, and reporting"
+    }
+  ]
 }
