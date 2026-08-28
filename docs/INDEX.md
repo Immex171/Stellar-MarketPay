@@ -43,6 +43,8 @@ length, what has not.
 - **[API Documentation](./API_DOCUMENTATION.md)** - REST API endpoints
 - **[API Reference](./api.md)** - Detailed API reference
 - **[Scope WebSocket Protocol](./websocket-scope-protocol.md)** - Realtime session protocol and client schema
+- **[GraphQL Gateway Guide](./GRAPHQL.md)** - Domain schema conventions, registry checks, migration status, and REST boundaries
+- **[GraphQL Gateway Design](./GRAPHQL_DESIGN_COMMENT.md)** - Architecture, data model, safety posture, and phased rollout for issue #318
 
 ---
 
