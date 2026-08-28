@@ -1,5 +1,3 @@
-# Escrow Core v2: modular lifecycle, milestone templates, streaming, and safe migration
-
 ## Summary
 
 This PR adds the compliance core needed for regulated value movement: tiered
@@ -95,6 +93,19 @@ foundation, identity/screening, and monitoring/API commits.
   stops workers, preserves audit-bearing tables, and rolls the application back
   while a forward fix is prepared.
 
+### CI integration fixes
+
+- Synced the branch with the latest upstream `main` before final validation.
+- Corrected the new escrow-reconciliation test's module paths so Jest resolves
+  the database, contract client, metric, and logger from `src/__tests__`.
+- Made `frontend/lib/i18n.d.ts` an actual external module matching the runtime
+  default and named exports, restoring TypeScript validation for relative and
+  alias imports.
+- Explicitly enabled locale grouping for XLM display so Node 24 ICU formats
+  Spanish four-digit values consistently with the application's tests.
+- Normalized the upstream reconciliation, locale, URL-filter, server, and PR
+  files with the repository's Prettier configuration.
+
 ## API surface
 
 - Native compliance APIs under `/api/compliance` for identity sessions, tier
@@ -106,7 +117,7 @@ foundation, identity/screening, and monitoring/API commits.
 - OpenAPI generation now reports 257 documented paths and 286 HTTP methods with
   no undocumented application routes.
 
-### Milestone templates and amendments
+## Type of change
 
 - [x] New feature
 - [x] Bug fix
@@ -114,14 +125,9 @@ foundation, identity/screening, and monitoring/API commits.
 - [x] Backend/API
 - [x] Documentation
 
-### Streaming settlement
+## Related issue
 
-- Added per-ledger linear streaming from client to freelancer over a defined ledger window.
-- Added withdrawal of accrued funds without ending the stream.
-- Added pause, resume, cancel, and dispute handling with accrual checkpointed at each action.
-- Made disputes stop accrual atomically.
-- Made cancellation pay accrued value to the freelancer and return the exact unvested remainder to the client.
-- Used cumulative entitlement rather than a rounded per-ledger rate:
+Closes #<!-- add issue number -->
 
 ## Compatibility and rollout
 
@@ -136,10 +142,10 @@ foundation, identity/screening, and monitoring/API commits.
 - Production must configure encryption, blind-index, provider, and webhook keys
   documented in `backend/.env.example` and the operations runbook.
 
-cargo clippy --all-targets --features std -- -D warnings
-  passed
+## Validation
 
-Validation completed locally on August 27, 2026:
+Validation completed locally against the latest upstream `main` on August 28,
+2026:
 
 - `npm run format:check`
 - `npm run lint`
@@ -149,15 +155,15 @@ Validation completed locally on August 27, 2026:
   - 286 HTTP methods
   - all routes documented
 - `cd backend && npm test`
-  - 60 suites passed, 1 skipped
-  - 556 tests passed, 1 skipped
-- `npm run test:fast`
-  - frontend: 9 suites / 76 tests / 36 snapshots passed
-  - backend: 60 suites / 556 tests passed; 1 suite / 1 test skipped
-  - contract unit tests: 56 passed
-  - differential tests: 11 passed
-  - fuzz invariant: 1 passed
-  - regression tests: 10 passed
+  - 62 suites passed
+  - 560 tests passed
+- Complete frontend CI sequence:
+  - unit: 10 suites / 87 tests / 36 snapshots passed
+  - accessibility: 5 tests passed
+  - production build and Storybook build passed
+  - Playwright E2E: 8 passed / 1 skipped
+  - visual regression: 3 passed
+- The PR's Soroban contract CI job passed after the upstream merge.
 - PostgreSQL `migrate -> rollback V21 -> migrate` verified against a real local
   database.
 - Manual database-backed scenarios verified:

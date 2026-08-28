@@ -65,7 +65,7 @@ const CdnInvalidationService = require("./services/cdn/invalidationService");
 const { createProvidersFromEnv } = require("./services/cdn/providers");
 
 const serviceLogger = createServiceLogger("server");
-const { runReconciliation } = require('./jobs/escrowReconciliationJob');
+const { runReconciliation } = require("./jobs/escrowReconciliationJob");
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 4000;
@@ -81,7 +81,7 @@ promClient.collectDefaultMetrics({
   prefix: "marketpay_",
 });
 // Register escrow reconciliation metric
-const { escrowReconciliationMismatchCounter } = require('./metrics/escrowReconciliationMetrics');
+const { escrowReconciliationMismatchCounter } = require("./metrics/escrowReconciliationMetrics");
 metricsRegistry.registerMetric(escrowReconciliationMismatchCounter);
 
 const httpRequestsTotal = new promClient.Counter({
@@ -608,12 +608,12 @@ async function startJobExpiryChecker() {
 async function startEscrowReconciliationScheduler() {
   const intervalMs = Number(process.env.ESCROW_RECONCILIATION_INTERVAL_MS) || 60 * 60 * 1000;
   // Run immediately on startup
-  await runReconciliation().catch(err => {
-    logError(serviceLogger, err, { operation: 'escrow_reconciliation' });
+  await runReconciliation().catch((err) => {
+    logError(serviceLogger, err, { operation: "escrow_reconciliation" });
   });
   setInterval(() => {
-    runReconciliation().catch(err => {
-      logError(serviceLogger, err, { operation: 'escrow_reconciliation' });
+    runReconciliation().catch((err) => {
+      logError(serviceLogger, err, { operation: "escrow_reconciliation" });
     });
   }, intervalMs).unref();
 }
