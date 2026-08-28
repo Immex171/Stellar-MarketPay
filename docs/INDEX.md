@@ -27,6 +27,7 @@ Welcome to Stellar MarketPay documentation. This index helps you find what you n
 - **[Contract Contributor Guide](./contract-contributor-guide.md)** - Local setup, test snapshots, fund-moving review bar, storage compatibility, and a worked entrypoint example
 - **[Environment Variables](./environment-variables.md)** - Single source of truth for runtime config
 - **[CDN Strategy](./CDN_STRATEGY.md)** - Multi-CDN edge caching, event-driven invalidation, cache-key/TTL strategy, stampede protection (decision recorded in [ADR-007](./ADR-007-multi-cdn-edge-strategy.md))
+- **[Enterprise Federation Architecture](./ADR-012-enterprise-federation.md)** - Per-organisation SAML/OIDC identity, wallet-authority separation, deprovisioning, and phased SCIM/controls delivery
 
 ### Formal Verification
 
@@ -196,6 +197,25 @@ Decisions that shaped Stellar MarketPay's architecture:
 - The contiguous-leaf-range scope decision and what it does and doesn't hide
 
 **Status**: ✅ Accepted
+
+---
+
+### ADR-012: Enterprise Federation and Transaction Authority Separation
+
+**File**: [ADR-012-enterprise-federation.md](./ADR-012-enterprise-federation.md)
+
+**Decision**: Treat SAML/OIDC authentication as an organisation membership
+session and require an independent linked-wallet or passkey signing proof for
+every escrow-sensitive transaction.
+
+**Key Points**:
+
+- Per-organisation provider and federated-identity model with atomic replay barriers
+- Linked wallet first; passkey account later; no platform-custodied employee keys
+- Deprovisioning immediately removes off-chain access without misrepresenting existing on-chain authority
+- Additive six-PR migration plan that leaves existing wallet users unchanged
+
+**Status**: ✅ Accepted for phased delivery
 
 ---
 
