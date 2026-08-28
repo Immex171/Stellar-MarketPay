@@ -1,2 +1,5 @@
 export PATH=$PATH:$HOME/.nvm/versions/node/v24.18.0/bin:$HOME/.cargo/bin
 npm run test:fast
+# `--base auto` resolves the merge base against the integration branch, which
+# is how the CI job describes the changeset too.
+node policy/cli.js check --stage pre-push --source range --base auto

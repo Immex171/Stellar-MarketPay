@@ -5,6 +5,9 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  # Required checks must also report inside the merge queue, or a queued
+  # entry never satisfies branch protection and the queue stalls.
+  merge_group:
 
 jobs:
   frontend:
