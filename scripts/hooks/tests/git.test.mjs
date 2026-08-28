@@ -22,6 +22,7 @@ function repository() {
   git(root, "init", "--quiet");
   git(root, "config", "user.name", "Hook Test");
   git(root, "config", "user.email", "hooks@example.test");
+  git(root, "config", "core.autocrlf", "false");
   writeFileSync(path.join(root, "README.md"), "# fixture\n");
   git(root, "add", ".");
   git(root, "commit", "--quiet", "-m", "test: initialise fixture");
@@ -61,6 +62,29 @@ test("HEAD snapshots exclude staged and unstaged future content", () => {
     const snapshot = exportIndexSnapshot(root, "HEAD");
     try {
       assert.equal(readFileSync(path.join(snapshot.path, "README.md"), "utf8"), "# fixture\n");
+    } finally {
+      snapshot.cleanup();
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("index snapshots preserve staged blob bytes when checkout conversion is enabled", () => {
+  const root = repository();
+  try {
+    git(root, "config", "core.autocrlf", "true");
+    writeFileSync(path.join(root, "README.md"), "staged with LF\n");
+    git(root, "add", "README.md");
+    const staged = spawnSync("git", ["show", ":README.md"], {
+      cwd: root,
+      encoding: null,
+    });
+    assert.equal(staged.status, 0, staged.stderr?.toString("utf8"));
+
+    const snapshot = exportIndexSnapshot(root);
+    try {
+      assert.deepEqual(readFileSync(path.join(snapshot.path, "README.md")), staged.stdout);
     } finally {
       snapshot.cleanup();
     }

@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -100,14 +108,46 @@ export function exportIndexSnapshot(root, treeish = null) {
   const holder = mkdtempSync(path.join(tmpdir(), "marketpay-hooks-"));
   const snapshot = path.join(holder, "snapshot");
   mkdirSync(snapshot);
-  const prefix = `${snapshot.replaceAll("\\", "/")}/`;
   const env = { ...process.env };
 
   if (treeish) {
     env.GIT_INDEX_FILE = path.join(holder, "index");
     git(root, ["read-tree", treeish], { env });
   }
-  git(root, ["checkout-index", "--all", `--prefix=${prefix}`], { env });
+
+  // `git checkout-index` applies checkout filters such as core.autocrlf. That means a staged LF
+  // blob becomes CRLF on Windows before Prettier sees it, so the hook no longer validates the
+  // bytes Git will commit. Materialise stage-zero blobs directly from the object database instead.
+  const records = splitNul(git(root, ["ls-files", "--stage", "-z"], { encoding: null, env }));
+  const snapshotRoot = `${path.resolve(snapshot)}${path.sep}`;
+
+  for (const record of records) {
+    const separator = record.indexOf("\t");
+    if (separator < 0) continue;
+    const [mode, objectId, stage] = record.slice(0, separator).split(" ");
+    if (stage !== "0") continue;
+
+    const relativePath = record.slice(separator + 1);
+    const destination = path.resolve(snapshot, ...relativePath.split("/"));
+    if (!destination.startsWith(snapshotRoot)) {
+      throw new Error(`Refusing to export an index path outside the snapshot: ${relativePath}`);
+    }
+
+    if (mode === "160000") {
+      mkdirSync(destination, { recursive: true });
+      continue;
+    }
+
+    mkdirSync(path.dirname(destination), { recursive: true });
+    const content = git(root, ["cat-file", "blob", objectId], { encoding: null, env });
+    if (mode === "120000" && process.platform !== "win32") {
+      symlinkSync(content.toString("utf8"), destination);
+      continue;
+    }
+
+    writeFileSync(destination, content);
+    if (mode === "100755") chmodSync(destination, 0o755);
+  }
 
   return {
     path: snapshot,

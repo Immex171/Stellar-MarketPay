@@ -425,10 +425,10 @@ index 6e83607..b9425eb 100644
 +does not bypass repository quality gates.
 diff --git a/docs/PR_FAST_CORRECT_GIT_HOOKS.md b/docs/PR_FAST_CORRECT_GIT_HOOKS.md
 new file mode 100644
-index 0000000..852d497
+index 0000000..fd0e9c1
 --- /dev/null
 +++ b/docs/PR_FAST_CORRECT_GIT_HOOKS.md
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,119 @@
 +# PR: Make Git hooks fast, staged-content-correct, and portable
 +
 +## Summary
@@ -458,6 +458,8 @@ index 0000000..852d497
 +### Pre-commit
 +
 +- Exports the Git index to an isolated temporary snapshot.
++- Materializes blobs directly from Git objects so Windows checkout conversion cannot change staged
++  LF bytes to CRLF before validation.
 +- Runs check-only Prettier, project-local ESLint, crate-aware `rustfmt`, and Python syntax checks.
 +- Selects tools only when files owned by that project are staged.
 +- Never stashes, rewrites, or re-stages contributor files.
@@ -516,7 +518,7 @@ index 0000000..852d497
 +
 +## Verification
 +
-+- Hook engine: 19 tests passed.
++- Hook engine: 20 tests passed on Linux, macOS, and Windows.
 +- Partial staging: staged blob validated while an unstaged hunk remained unchanged.
 +- Work preservation: staged diff, worktree diff, and stash list remained byte-identical after
 +  SIGINT.
@@ -1131,12 +1133,20 @@ index 0000000..5127a7a
 +}
 diff --git a/scripts/hooks/git.mjs b/scripts/hooks/git.mjs
 new file mode 100644
-index 0000000..692d935
+index 0000000..068cef8
 --- /dev/null
 +++ b/scripts/hooks/git.mjs
-@@ -0,0 +1,231 @@
+@@ -0,0 +1,271 @@
 +import { createHash } from "node:crypto";
-+import { existsSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
++import {
++  chmodSync,
++  existsSync,
++  mkdtempSync,
++  mkdirSync,
++  rmSync,
++  symlinkSync,
++  writeFileSync,
++} from "node:fs";
 +import { tmpdir } from "node:os";
 +import path from "node:path";
 +import { spawnSync } from "node:child_process";
@@ -1237,14 +1247,46 @@ index 0000000..692d935
 +  const holder = mkdtempSync(path.join(tmpdir(), "marketpay-hooks-"));
 +  const snapshot = path.join(holder, "snapshot");
 +  mkdirSync(snapshot);
-+  const prefix = `${snapshot.replaceAll("\\", "/")}/`;
 +  const env = { ...process.env };
 +
 +  if (treeish) {
 +    env.GIT_INDEX_FILE = path.join(holder, "index");
 +    git(root, ["read-tree", treeish], { env });
 +  }
-+  git(root, ["checkout-index", "--all", `--prefix=${prefix}`], { env });
++
++  // `git checkout-index` applies checkout filters such as core.autocrlf. That means a staged LF
++  // blob becomes CRLF on Windows before Prettier sees it, so the hook no longer validates the
++  // bytes Git will commit. Materialise stage-zero blobs directly from the object database instead.
++  const records = splitNul(git(root, ["ls-files", "--stage", "-z"], { encoding: null, env }));
++  const snapshotRoot = `${path.resolve(snapshot)}${path.sep}`;
++
++  for (const record of records) {
++    const separator = record.indexOf("\t");
++    if (separator < 0) continue;
++    const [mode, objectId, stage] = record.slice(0, separator).split(" ");
++    if (stage !== "0") continue;
++
++    const relativePath = record.slice(separator + 1);
++    const destination = path.resolve(snapshot, ...relativePath.split("/"));
++    if (!destination.startsWith(snapshotRoot)) {
++      throw new Error(`Refusing to export an index path outside the snapshot: ${relativePath}`);
++    }
++
++    if (mode === "160000") {
++      mkdirSync(destination, { recursive: true });
++      continue;
++    }
++
++    mkdirSync(path.dirname(destination), { recursive: true });
++    const content = git(root, ["cat-file", "blob", objectId], { encoding: null, env });
++    if (mode === "120000" && process.platform !== "win32") {
++      symlinkSync(content.toString("utf8"), destination);
++      continue;
++    }
++
++    writeFileSync(destination, content);
++    if (mode === "100755") chmodSync(destination, 0o755);
++  }
 +
 +  return {
 +    path: snapshot,
@@ -2099,10 +2141,10 @@ index 0000000..87c2a14
 +});
 diff --git a/scripts/hooks/tests/git.test.mjs b/scripts/hooks/tests/git.test.mjs
 new file mode 100644
-index 0000000..d88dbb0
+index 0000000..2b57a04
 --- /dev/null
 +++ b/scripts/hooks/tests/git.test.mjs
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,176 @@
 +import assert from "node:assert/strict";
 +import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 +import { tmpdir } from "node:os";
@@ -2127,6 +2169,7 @@ index 0000000..d88dbb0
 +  git(root, "init", "--quiet");
 +  git(root, "config", "user.name", "Hook Test");
 +  git(root, "config", "user.email", "hooks@example.test");
++  git(root, "config", "core.autocrlf", "false");
 +  writeFileSync(path.join(root, "README.md"), "# fixture\n");
 +  git(root, "add", ".");
 +  git(root, "commit", "--quiet", "-m", "test: initialise fixture");
@@ -2166,6 +2209,29 @@ index 0000000..d88dbb0
 +    const snapshot = exportIndexSnapshot(root, "HEAD");
 +    try {
 +      assert.equal(readFileSync(path.join(snapshot.path, "README.md"), "utf8"), "# fixture\n");
++    } finally {
++      snapshot.cleanup();
++    }
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++});
++
++test("index snapshots preserve staged blob bytes when checkout conversion is enabled", () => {
++  const root = repository();
++  try {
++    git(root, "config", "core.autocrlf", "true");
++    writeFileSync(path.join(root, "README.md"), "staged with LF\n");
++    git(root, "add", "README.md");
++    const staged = spawnSync("git", ["show", ":README.md"], {
++      cwd: root,
++      encoding: null,
++    });
++    assert.equal(staged.status, 0, staged.stderr?.toString("utf8"));
++
++    const snapshot = exportIndexSnapshot(root);
++    try {
++      assert.deepEqual(readFileSync(path.join(snapshot.path, "README.md")), staged.stdout);
 +    } finally {
 +      snapshot.cleanup();
 +    }

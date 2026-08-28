@@ -65,10 +65,10 @@ HOOK REGRESSION SUITE
 Command: PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH" MARKETPAY_HOOK_ENFORCE_BUDGET=1 npm run test:hooks
 Input: scripts/hooks/tests/*.test.mjs
 Literal output summary:
-1..19
-# tests 19
+1..20
+# tests 20
 # suites 0
-# pass 19
+# pass 20
 # fail 0
 # cancelled 0
 # skipped 0

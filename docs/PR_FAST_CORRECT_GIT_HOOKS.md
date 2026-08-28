@@ -27,6 +27,8 @@ The previous hooks had four reliability problems:
 ### Pre-commit
 
 - Exports the Git index to an isolated temporary snapshot.
+- Materializes blobs directly from Git objects so Windows checkout conversion cannot change staged
+  LF bytes to CRLF before validation.
 - Runs check-only Prettier, project-local ESLint, crate-aware `rustfmt`, and Python syntax checks.
 - Selects tools only when files owned by that project are staged.
 - Never stashes, rewrites, or re-stages contributor files.
@@ -85,7 +87,7 @@ runs survivable without moving whole-crate Clippy into pre-commit.
 
 ## Verification
 
-- Hook engine: 19 tests passed.
+- Hook engine: 20 tests passed on Linux, macOS, and Windows.
 - Partial staging: staged blob validated while an unstaged hunk remained unchanged.
 - Work preservation: staged diff, worktree diff, and stash list remained byte-identical after
   SIGINT.
