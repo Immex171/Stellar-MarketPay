@@ -41,20 +41,18 @@ async function ensureMigrationsTable(client) {
     )
   `);
 
-  // Several independently-landed features share a numeric version (for
-  // example both indexer reliability and the time-entry backfill are V19).
-  // Older journals used `version` alone as the key and silently skipped every
-  // second migration at that number. Upgrade the journal in-place so each
-  // named migration is tracked and applied exactly once.
+  // Multiple independently landed features already share a numeric migration
+  // version. Upgrade legacy journals in place so each named file is applied
+  // exactly once instead of silently skipping the second file at a version.
   await client.query(`
     DO $$
     BEGIN
       IF EXISTS (
         SELECT 1
-        FROM pg_constraint
-        WHERE conrelid = 'schema_migrations'::regclass
-          AND conname = 'schema_migrations_pkey'
-          AND pg_get_constraintdef(oid) = 'PRIMARY KEY (version)'
+          FROM pg_constraint
+         WHERE conrelid = 'schema_migrations'::regclass
+           AND conname = 'schema_migrations_pkey'
+           AND pg_get_constraintdef(oid) = 'PRIMARY KEY (version)'
       ) THEN
         ALTER TABLE schema_migrations DROP CONSTRAINT schema_migrations_pkey;
         ALTER TABLE schema_migrations

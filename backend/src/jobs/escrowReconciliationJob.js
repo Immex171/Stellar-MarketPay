@@ -1,9 +1,9 @@
-const pool = require('../db/pool');
-const { getEscrowOnChain } = require('../contracts/escrowClient');
-const { escrowReconciliationMismatchCounter } = require('../metrics/escrowReconciliationMetrics');
-const { createServiceLogger } = require('../utils/logger');
+const pool = require("../db/pool");
+const { getEscrowOnChain } = require("../contracts/escrowClient");
+const { escrowReconciliationMismatchCounter } = require("../metrics/escrowReconciliationMetrics");
+const { createServiceLogger } = require("../utils/logger");
 
-const logger = createServiceLogger('escrow-reconciliation');
+const logger = createServiceLogger("escrow-reconciliation");
 
 /**
  * List all non‑terminal escrows from the database.
@@ -22,19 +22,22 @@ async function fetchActiveEscrows() {
  */
 function compareEscrow(dbEscrow, onChain) {
   if (!onChain) {
-    logger.warn({ jobId: dbEscrow.job_id }, 'On‑chain escrow data missing');
-    escrowReconciliationMismatchCounter.inc({ type: 'missing_onchain' });
+    logger.warn({ jobId: dbEscrow.job_id }, "On‑chain escrow data missing");
+    escrowReconciliationMismatchCounter.inc({ type: "missing_onchain" });
     return true;
   }
   const mismatches = [];
-  if (dbEscrow.status !== onChain.status) mismatches.push('status');
-  if (dbEscrow.client_address !== onChain.client) mismatches.push('client_address');
-  if (dbEscrow.freelancer_address !== onChain.freelancer) mismatches.push('freelancer_address');
-  if (Number(dbEscrow.amount_xlm) !== Number(onChain.amount)) mismatches.push('amount');
+  if (dbEscrow.status !== onChain.status) mismatches.push("status");
+  if (dbEscrow.client_address !== onChain.client) mismatches.push("client_address");
+  if (dbEscrow.freelancer_address !== onChain.freelancer) mismatches.push("freelancer_address");
+  if (Number(dbEscrow.amount_xlm) !== Number(onChain.amount)) mismatches.push("amount");
 
   if (mismatches.length > 0) {
-    logger.warn({ jobId: dbEscrow.job_id, mismatches, db: dbEscrow, onChain }, 'Escrow state mismatch detected');
-    escrowReconciliationMismatchCounter.inc({ type: 'field_mismatch' });
+    logger.warn(
+      { jobId: dbEscrow.job_id, mismatches, db: dbEscrow, onChain },
+      "Escrow state mismatch detected"
+    );
+    escrowReconciliationMismatchCounter.inc({ type: "field_mismatch" });
     return true;
   }
   return false;
@@ -44,18 +47,18 @@ function compareEscrow(dbEscrow, onChain) {
  * Run the full reconciliation pass.
  */
 async function runReconciliation() {
-  logger.info('Starting escrow reconciliation job');
+  logger.info("Starting escrow reconciliation job");
   const escrows = await fetchActiveEscrows();
   for (const esc of escrows) {
     try {
       const onChain = await getEscrowOnChain(esc.job_id);
       compareEscrow(esc, onChain);
     } catch (err) {
-      logger.error({ err, jobId: esc.job_id }, 'Error reconciling escrow');
-      escrowReconciliationMismatchCounter.inc({ type: 'error' });
+      logger.error({ err, jobId: esc.job_id }, "Error reconciling escrow");
+      escrowReconciliationMismatchCounter.inc({ type: "error" });
     }
   }
-  logger.info('Escrow reconciliation job completed');
+  logger.info("Escrow reconciliation job completed");
 }
 
 module.exports = { runReconciliation };

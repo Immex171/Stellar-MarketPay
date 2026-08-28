@@ -6,7 +6,7 @@ import {
   formatPrice,
   formatUSDEquivalent,
   getMonthlyEstimate,
-  timeAgo
+  timeAgo,
 } from "../utils/format";
 import i18next from "../lib/i18n";
 import { format as dateFnsFormat } from "date-fns";
@@ -91,7 +91,7 @@ describe("utils/format", () => {
       expect(result.display).toMatch(/1(\.| )000,5 XLM/);
       expect(result.usdEquiv).toMatch(/100,05/);
     });
-    
+
     it("timeAgo is in Spanish", () => {
       const pastDate = new Date(mockDate.getTime() - 2 * 60 * 60 * 1000).toISOString(); // 2 hours ago
       expect(timeAgo(pastDate)).toMatch(/alrededor de 2 horas/i); // "hace alrededor de 2 horas"

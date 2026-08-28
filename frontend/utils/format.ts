@@ -11,11 +11,15 @@ import type { Application, Availability, AvailabilityStatus, Job, JobStatus } fr
 function getDateLocale() {
   const lng = i18next?.language?.split("-")[0] || "en";
   switch (lng) {
-    case "es": return es;
-    case "fr": return fr;
-    case "pt": return pt;
+    case "es":
+      return es;
+    case "fr":
+      return fr;
+    case "pt":
+      return pt;
     case "en":
-    default: return enUS;
+    default:
+      return enUS;
   }
 }
 
@@ -87,7 +91,10 @@ export function exportApplicationsToCSV(applications: Application[]): void {
 export function formatXLM(amount: string | number, decimals = 4): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
   if (isNaN(num)) return "0 XLM";
-  return `${new Intl.NumberFormat(getActiveLocaleString(), { maximumFractionDigits: decimals }).format(num)} XLM`;
+  return `${new Intl.NumberFormat(getActiveLocaleString(), {
+    maximumFractionDigits: decimals,
+    useGrouping: true,
+  }).format(num)} XLM`;
 }
 
 export function timeAgo(dateString: string): string {
@@ -325,7 +332,10 @@ export const SKILL_SUGGESTIONS = [
 export function formatMoney(amount: string | number, currency: string = "XLM"): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
   if (isNaN(num)) return `0 ${currency}`;
-  const formatted = new Intl.NumberFormat(getActiveLocaleString(), { maximumFractionDigits: 4 }).format(num);
+  const formatted = new Intl.NumberFormat(getActiveLocaleString(), {
+    maximumFractionDigits: 4,
+    useGrouping: true,
+  }).format(num);
   return `${formatted} ${currency}`;
 }
 
@@ -336,7 +346,11 @@ export function formatUSDEquivalent(
 ): string | null {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
   if (isNaN(num)) return null;
-  const usdFormatter = new Intl.NumberFormat(getActiveLocaleString(), { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" });
+  const usdFormatter = new Intl.NumberFormat(getActiveLocaleString(), {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "narrowSymbol",
+  });
   if (currency.toUpperCase() === "USDC") {
     return `≈ ${usdFormatter.format(num)} USD`;
   }
@@ -358,8 +372,15 @@ export function formatPrice(
   if (isNaN(num)) return { display: "0 XLM", usdEquiv: null };
 
   const locale = getActiveLocaleString();
-  const usdFormatter = new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" });
-  const xlmFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 4 });
+  const usdFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "narrowSymbol",
+  });
+  const xlmFormatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 4,
+    useGrouping: true,
+  });
 
   const usdEquiv = xlmPriceUsd !== null ? usdFormatter.format(num * xlmPriceUsd) : null;
 
@@ -388,7 +409,11 @@ export function getMonthlyEstimate(
   const num = typeof xlmAmount === "string" ? parseFloat(xlmAmount) : xlmAmount;
   if (isNaN(num)) return null;
   const locale = getActiveLocaleString();
-  const usdFormatter = new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" });
+  const usdFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "narrowSymbol",
+  });
   return `${usdFormatter.format(num * xlmPriceUsd)}/mo est.`;
 }
 

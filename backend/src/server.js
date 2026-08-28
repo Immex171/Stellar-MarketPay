@@ -52,6 +52,9 @@ const rankingRoutes = require("./routes/ranking");
 const savedSearchesRoutes = require("./routes/savedSearches");
 const reputationRoutes = require("./routes/reputation");
 const retainerRoutes = require("./routes/retainers");
+const fraudRoutes = require("./routes/fraud");
+const complianceRoutes = require("./routes/compliance");
+const sep12Routes = require("./routes/sep12");
 
 const pool = require("./db/pool");
 const { migrate } = require("./db/migrate");
@@ -62,7 +65,7 @@ const CdnInvalidationService = require("./services/cdn/invalidationService");
 const { createProvidersFromEnv } = require("./services/cdn/providers");
 
 const serviceLogger = createServiceLogger("server");
-const { runReconciliation } = require('./jobs/escrowReconciliationJob');
+const { runReconciliation } = require("./jobs/escrowReconciliationJob");
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 4000;
@@ -78,7 +81,7 @@ promClient.collectDefaultMetrics({
   prefix: "marketpay_",
 });
 // Register escrow reconciliation metric
-const { escrowReconciliationMismatchCounter } = require('./metrics/escrowReconciliationMetrics');
+const { escrowReconciliationMismatchCounter } = require("./metrics/escrowReconciliationMetrics");
 metricsRegistry.registerMetric(escrowReconciliationMismatchCounter);
 
 const httpRequestsTotal = new promClient.Counter({
@@ -258,7 +261,16 @@ app.use(requestLoggerMiddleware);
 
 app.use(compression());
 
-app.use(express.json({ limit: "20kb" }));
+app.use(
+  express.json({
+    limit: "20kb",
+    verify: (req, res, buffer) => {
+      void res;
+      req.rawBody = buffer.toString("utf8");
+    },
+  })
+);
+app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(sanitizeMiddleware({ strict: false }));
 
 // Swagger UI
@@ -350,6 +362,9 @@ app.use("/api/ranking", rankingRoutes);
 app.use("/api/saved-searches", savedSearchesRoutes);
 app.use("/api/reputation", reputationRoutes);
 app.use("/api/retainers", retainerRoutes);
+app.use("/api/fraud", fraudRoutes);
+app.use("/api/compliance", complianceRoutes);
+app.use("/api/sep12", sep12Routes);
 
 app.use((err, req, res, next) => {
   void next;
@@ -517,6 +532,10 @@ async function bootstrap() {
     // Start retainer billing scheduler - releases due periods every 15 minutes
     startRetainerBillingScheduler();
 
+    // Compliance expiry, continuous screening and Travel Rule retry worker.
+    const { startComplianceScheduler } = require("./services/compliance/worker");
+    startComplianceScheduler();
+
     server.listen(PORT, () => {
       serviceLogger.info(
         {
@@ -589,12 +608,12 @@ async function startJobExpiryChecker() {
 async function startEscrowReconciliationScheduler() {
   const intervalMs = Number(process.env.ESCROW_RECONCILIATION_INTERVAL_MS) || 60 * 60 * 1000;
   // Run immediately on startup
-  await runReconciliation().catch(err => {
-    logError(serviceLogger, err, { operation: 'escrow_reconciliation' });
+  await runReconciliation().catch((err) => {
+    logError(serviceLogger, err, { operation: "escrow_reconciliation" });
   });
   setInterval(() => {
-    runReconciliation().catch(err => {
-      logError(serviceLogger, err, { operation: 'escrow_reconciliation' });
+    runReconciliation().catch((err) => {
+      logError(serviceLogger, err, { operation: "escrow_reconciliation" });
     });
   }, intervalMs).unref();
 }
