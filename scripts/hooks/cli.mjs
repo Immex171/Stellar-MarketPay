@@ -43,6 +43,18 @@ function runCommitlint(root, messageFile) {
   return result.status ?? 1;
 }
 
+function runCommitMessagePolicy(root, messageFile) {
+  const cli = path.join(root, "policy", "cli.js");
+  if (!existsSync(cli)) return 0;
+  const result = spawnSync(
+    process.execPath,
+    [cli, "check", "--stage", "commit-msg", "--source", "staged", "--commit-msg-file", messageFile],
+    { cwd: root, stdio: "inherit", windowsHide: false }
+  );
+  if (result.error) throw result.error;
+  return result.status ?? 1;
+}
+
 async function main() {
   const command = process.argv[2];
   const originalCwd = process.cwd();
@@ -59,7 +71,9 @@ async function main() {
   if (command === "commit-msg") {
     if (!messageArgument) throw new Error("commit-msg requires the commit message file path");
     const messageFile = path.resolve(originalCwd, messageArgument);
-    return runCommitlint(root, messageFile);
+    const commitlintStatus = runCommitlint(root, messageFile);
+    if (commitlintStatus !== 0) return commitlintStatus;
+    return runCommitMessagePolicy(root, messageFile);
   }
   if (command === "doctor") return printDiagnosis(diagnose(root));
 

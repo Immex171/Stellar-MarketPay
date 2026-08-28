@@ -70,6 +70,14 @@ The previous hooks had four reliability problems:
   `core.hooksPath`, CRLF, executable-bit problems, missing dependencies, and optional Rust caches.
 - Adds hook-engine CI coverage on Ubuntu, macOS, and Windows.
 
+### Shared merge-policy integration
+
+- Runs the repository policy CLI from the hook engine at `pre-commit`, `commit-msg`, and
+  `pre-push`, keeping local and CI enforcement on the same entrypoint.
+- Keeps policy evaluation uncached so changes to staged input, commit trailers, overrides, and the
+  pushed range are evaluated every time.
+- Regenerates the hook-integrity manifest for the portable Husky launchers.
+
 ## Measurements
 
 Measured on Linux with Node 24.18 and Cargo 1.97:
@@ -88,6 +96,7 @@ runs survivable without moving whole-crate Clippy into pre-commit.
 ## Verification
 
 - Hook engine: 20 tests passed on Linux, macOS, and Windows.
+- Policy engine and local/CI parity: 70 tests passed.
 - Partial staging: staged blob validated while an unstaged hunk remained unchanged.
 - Work preservation: staged diff, worktree diff, and stash list remained byte-identical after
   SIGINT.

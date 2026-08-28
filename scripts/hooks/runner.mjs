@@ -332,6 +332,25 @@ function rustEnvironment(root) {
   return { env, sccache };
 }
 
+function policyStep(root, stage) {
+  const cli = path.join(root, "policy", "cli.js");
+  if (!existsSync(cli)) return null;
+  const args =
+    stage === "pre-commit"
+      ? [cli, "check", "--stage", "pre-commit", "--source", "staged"]
+      : [cli, "check", "--stage", "pre-push", "--source", "range", "--base", "auto"];
+  return {
+    name: `policy-${stage}`,
+    command: `node policy/cli.js ${args.slice(1).join(" ")}`,
+    toolVersion: `node ${process.version}`,
+    inputSignature: "uncached-policy-evaluation",
+    executable: process.execPath,
+    args,
+    cwd: root,
+    cacheable: false,
+  };
+}
+
 function relatedJestArgs(snapshot, route, project, baseArgs) {
   const projectFiles = route.paths
     .filter((file) => file.startsWith(`${project}/`))
@@ -484,6 +503,9 @@ function prePushSteps(root, snapshot, route) {
     });
   }
 
+  const policy = policyStep(root, "pre-push");
+  if (policy) steps.push(policy);
+
   return steps;
 }
 
@@ -526,6 +548,8 @@ export async function runPreCommit(root) {
     linkDependencyTrees(root, snapshot.path);
     await optionalTestDelay();
     const steps = preCommitSteps(root, snapshot.path, files);
+    const policy = policyStep(root, "pre-commit");
+    if (policy) steps.push(policy);
     return executeSteps({ root, hook: "pre-commit", steps });
   } finally {
     activeCleanup = null;
