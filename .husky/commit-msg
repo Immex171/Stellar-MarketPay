@@ -1,6 +1,5 @@
-export PATH=$PATH:$HOME/.nvm/versions/node/v24.18.0/bin
-npx --no -- commitlint --edit "$1"
-# The commit message is itself policy input: storage-compatibility
-# acknowledgements live in a trailer, so this is the earliest point at which
-# that rule can give a useful answer.
-node policy/cli.js check --stage commit-msg --source staged --commit-msg-file "$1"
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel)
+exec "$ROOT/scripts/hooks/launch.sh" commit-msg "$1"

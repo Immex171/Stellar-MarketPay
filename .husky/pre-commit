@@ -1,7 +1,5 @@
-export PATH=$PATH:$HOME/.nvm/versions/node/v24.18.0/bin
-npx lint-staged
-# One rule set, one entrypoint. This is the same command the required CI check
-# runs, differing only in --stage; see docs/POLICY_ENGINE.md. Skipping it with
-# --no-verify changes when you find out about a violation, not whether it is
-# enforced.
-node policy/cli.js check --stage pre-commit --source staged
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel)
+exec "$ROOT/scripts/hooks/launch.sh" pre-commit

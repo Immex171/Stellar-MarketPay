@@ -3,9 +3,9 @@
   "algorithm": "sha256",
   "generatedFrom": [".husky/", "policy/engine/", "policy/policies.json", "policy/cli.js"],
   "files": {
-    ".husky/commit-msg": "a43bc3aa91f8caeeb738c45917b927f634ee3c9e8ed8278ac345764b5ee32f1b",
-    ".husky/pre-commit": "e0dcca293596fc71746af517de989319b0b1a8b72e9fc2f4373b315eca52530f",
-    ".husky/pre-push": "6f06973213eb07a5d3406739e5bc5ca344f9c5f5514f3ed3fde36b582695f406",
+    ".husky/commit-msg": "e77e6a4ae69087f286d3d2b4929d20c8827f18c51d35adb9daec223824255229",
+    ".husky/pre-commit": "3b4d2ebe71e95992e3d5247ce93771bcb288a0614b9cf92f8dc03a1667d6c94a",
+    ".husky/pre-push": "b29f3dd7774676a642b5e1d8f8195dd198fd2926aca7f31e11484269bd4fb37c",
     "policy/cli.js": "953800e952f39f382b7d2cbee7b8356e2d9196927c92a3682c922b8e0cf1b5f9",
     "policy/engine/checks/cargo-lock-integrity.js": "cf9031176c8ac64f0ef54b14e3f2338cd16b78499fda30f32dd21e4adb6b247c",
     "policy/engine/checks/contract-entrypoint-tests.js": "aeb262cb5e507888e7998709f34dada245cb72a1dc5cb998a59d8c5af88de971",

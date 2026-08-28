@@ -51,7 +51,9 @@ To use an interactive commit prompt:
 npm run commit
 ```
 
-Local git hooks automatically run `lint-staged` on `pre-commit`, `commitlint` on `commit-msg`, and fast unit test suites on `pre-push`.
+Local Git hooks validate staged-index snapshots on `pre-commit`, run `commitlint` on ordinary
+messages, and execute only affected project suites on `pre-push`. Diagnose setup with
+`npm run hooks:doctor`.
 
 > For complete hook guidelines, escape hatch documentation (`--no-verify`), and benchmark details, see [docs/GIT_HOOKS_AND_COMMITS.md](./docs/GIT_HOOKS_AND_COMMITS.md).
 
