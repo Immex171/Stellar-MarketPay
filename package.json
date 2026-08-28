@@ -19,7 +19,11 @@
     "release": "commit-and-tag-version",
     "release:minor": "commit-and-tag-version --release-as minor",
     "release:patch": "commit-and-tag-version --release-as patch",
-    "release:major": "commit-and-tag-version --release-as major"
+    "release:major": "commit-and-tag-version --release-as major",
+    "test:hooks": "node --test scripts/hooks/tests/*.test.mjs",
+    "hooks:pre-commit": "node scripts/hooks/cli.mjs pre-commit",
+    "hooks:pre-push": "node scripts/hooks/cli.mjs pre-push",
+    "hooks:doctor": "node scripts/hooks/cli.mjs doctor"
   },
   "config": {
     "commitizen": {
@@ -46,7 +50,9 @@
     "commit-and-tag-version": "^13.1.2",
     "commitizen": "^4.3.2",
     "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
     "prettier": "^3.9.6"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
