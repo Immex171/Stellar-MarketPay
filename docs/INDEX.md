@@ -484,6 +484,20 @@ stellar-marketpay/
 - Check [TODO.md](../TODO.md) for outstanding tasks
 - Review [ROADMAP.md](../ROADMAP.md) for planned features
 
+### Merge Policy & Supply Chain
+
+The rules that gate a merge are defined once and executed identically by the
+local hooks and by a required CI check, so bypassing a hook changes when you
+learn about a violation, never whether it is enforced.
+
+- **[Policy Catalogue](./POLICY_CATALOGUE.md)** - Every rule, the incident behind it, its severity per stage, and the override mechanism
+- **[Policy Engine](./POLICY_ENGINE.md)** - Architecture, the parity guarantee, warn-only rollout, and how to add a rule
+- **[Git Hooks & Commits](./GIT_HOOKS_AND_COMMITS.md)** - The local hook runner the policy stages plug into
+- **[Branch Protection & Merge Queue](./BRANCH_PROTECTION.md)** - Required checks, the merge queue, and the administrator-override decision
+- **[Commit Signing](./COMMIT_SIGNING.md)** - One-command enrolment and the server-side rollout path
+- **[Secrets: Prevention and Response](./SECRET_RESPONSE.md)** - Scanning locally and remotely, the allowlist, and what to do when a credential leaks
+- **[Build Provenance](./PROVENANCE.md)** - Attesting the release wasm and verifying a deployed contract
+
 ---
 
 ## 📝 Document Maintenance
