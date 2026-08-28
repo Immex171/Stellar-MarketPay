@@ -1,3 +1,5 @@
+# Escrow Core v2: modular lifecycle, milestone templates, streaming, and safe migration
+
 ## Summary
 
 This PR adds the compliance core needed for regulated value movement: tiered
@@ -104,7 +106,7 @@ foundation, identity/screening, and monitoring/API commits.
 - OpenAPI generation now reports 257 documented paths and 286 HTTP methods with
   no undocumented application routes.
 
-## Type of change
+### Milestone templates and amendments
 
 - [x] New feature
 - [x] Bug fix
@@ -112,9 +114,14 @@ foundation, identity/screening, and monitoring/API commits.
 - [x] Backend/API
 - [x] Documentation
 
-## Related issue
+### Streaming settlement
 
-Closes #<!-- add issue number -->
+- Added per-ledger linear streaming from client to freelancer over a defined ledger window.
+- Added withdrawal of accrued funds without ending the stream.
+- Added pause, resume, cancel, and dispute handling with accrual checkpointed at each action.
+- Made disputes stop accrual atomically.
+- Made cancellation pay accrued value to the freelancer and return the exact unvested remainder to the client.
+- Used cumulative entitlement rather than a rounded per-ledger rate:
 
 ## Compatibility and rollout
 
@@ -129,7 +136,8 @@ Closes #<!-- add issue number -->
 - Production must configure encryption, blind-index, provider, and webhook keys
   documented in `backend/.env.example` and the operations runbook.
 
-## Validation
+cargo clippy --all-targets --features std -- -D warnings
+  passed
 
 Validation completed locally on August 27, 2026:
 
